@@ -50,7 +50,7 @@ jobs:
           docker build -t $IMAGE_NAME .
           docker push $IMAGE_NAME
         env:
-          IMAGE_NAME: ghcr.io/unity-webgl-nginx:latest
+          IMAGE_NAME: ghcr.io/cseteram/unity-webgl-nginx:latest
 
   deploy-to-k8s:
     name: Deploy to k8s

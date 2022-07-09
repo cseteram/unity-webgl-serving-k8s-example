@@ -1,0 +1,68 @@
+name: Build project and deploy
+
+on:
+  push:
+    branches:
+      - 'main'
+  workflow_dispatch:
+
+jobs:
+  build-and-push-image:
+    name: Build and push the image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ${{ github.ref }}
+        uses: actions/checkout@v3
+      - name: Setup cache
+        uses: actions/cache@v3
+        with:
+          path: Library
+          key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-
+      - name: Build
+        uses: game-ci/unity-builder@v2.0.4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: WebGL
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: Build-WebGL
+          path: build/WebGL
+          retention-days: 14
+      - name: Sign in to the GitHub container registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Docker build and push
+        run: |
+          cp Dockerfile.WebGL build/WebGL/Dockerfile
+          cd build/WebGL
+          docker build -t $IMAGE_NAME .
+          docker push $IMAGE_NAME
+        env:
+          IMAGE_NAME: ghcr.io/unity-webgl-nginx:latest
+
+  deploy-to-k8s:
+    name: Deploy to k8s
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x ./kubectl
+          mkdir -p ~/.local/bin/
+          mv ./kubectl ~/.local/bin/kubectl
+          echo "${HOME}/.local/bin" >> ${GITHUB_PATH}
+      - name: Configure cluster access
+        run: |
+          mkdir -p ~/.kube
+          echo "${KUBECONFIG_CONTENT}" > ~/.kube/config
+        env:
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG_CONTENT }}
+      - name: Deploy to the kubernetes cluster
+        run: echo "TODO"

@@ -71,4 +71,19 @@ jobs:
         env:
           KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG_CONTENT }}
       - name: Deploy to the kubernetes cluster
-        run: echo "TODO"
+        working-directory: .kube/
+        run: |
+          # First, create the namespace
+          kubectl apply -f namespace.yml
+
+          # Setup a certificate
+          # See 'https://github.com/cloudflare/origin-ca-issuer' for details
+          kubectl create secret generic \
+            --dry-run=client \
+            -n unity-webgl-k8s service-key \
+            --from-literal key=${{ secrets.CLOUDFLARE_ORIGIN_CA_KEY }} \
+            -oyaml > service-key.yml
+          kubectl apply -f service-key.yml -f issuer.yml -f certificate.yml
+
+          # Deploy the service to a k8s cluster
+          kubectl apply -f deploy.yml

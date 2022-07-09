@@ -20,6 +20,11 @@ jobs:
           key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
           restore-keys: |
             Library-
+      - name: Get runner's uid and gid
+        id: runner-info
+        run: |
+          echo "::set-output name=uid::$(id -u)"
+          echo "::set-output name=gid::$(id -g)"
       - name: Build
         uses: game-ci/unity-builder@v2.0.4
         env:
@@ -28,6 +33,7 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: WebGL
+          chownFilesTo: ${{ steps.runner-info.outputs.uid }}:${{ steps.runner-info.outputs.gid }}
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:

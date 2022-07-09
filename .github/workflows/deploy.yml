@@ -72,6 +72,9 @@ jobs:
           echo "${KUBECONFIG_CONTENT}" > ~/.kube/config
         env:
           KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG_CONTENT }}
+      - name: Report current status
+        run: |
+          kubectl get -n unity-webgl-k8s all
       - name: Deploy to the kubernetes cluster
         working-directory: .kube/
         run: |
@@ -89,3 +92,6 @@ jobs:
 
           # Deploy the service to a k8s cluster
           kubectl apply -f deploy.yml
+
+          # Rolling restart pods if needed
+          kubectl -n unity-webgl-k8s rollout restart deployment unity-webgl
